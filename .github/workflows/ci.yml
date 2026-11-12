@@ -1,0 +1,70 @@
+name: ci
+
+# Runs on every push to an agent branch and on every PR, so the n8n agent can read real check results.
+on:
+  push:
+    branches: ["agent/**", "main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev tools
+        run: pip install -r requirements-dev.txt
+
+      # Each check uses `if: always()` so every result is reported even when an earlier one fails.
+      - name: Lint (ruff)
+        id: lint
+        if: always()
+        run: ruff check . --output-format=github
+
+      - name: Tests (pytest)
+        id: tests
+        if: always()
+        run: pytest -q --junitxml=pytest-report.xml
+
+      - name: Security scan (bandit)
+        id: security
+        if: always()
+        run: bandit -r src -q
+
+      - name: Secret scan (gitleaks)
+        id: secrets
+        if: always()
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Check results"
+            echo "| Check | Result |"
+            echo "|---|---|"
+            echo "| Lint (ruff) | ${{ steps.lint.outcome }} |"
+            echo "| Tests (pytest) | ${{ steps.tests.outcome }} |"
+            echo "| Security (bandit) | ${{ steps.security.outcome }} |"
+            echo "| Secrets (gitleaks) | ${{ steps.secrets.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: pytest-report.xml
+          if-no-files-found: ignore

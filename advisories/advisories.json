@@ -1,0 +1,19 @@
+{
+  "_comment": "Fictional advisory feed for the PoC sandbox. Package names and IDs are made up.",
+  "advisories": [
+    {
+      "id": "FAKE-2026-0101",
+      "package": "acme-cli",
+      "minimum_safe_version": "2.61.0",
+      "severity": "high",
+      "summary": "Fictional: token leakage in verbose logging."
+    },
+    {
+      "id": "FAKE-2026-0142",
+      "package": "widgetd",
+      "minimum_safe_version": "1.4.2",
+      "severity": "medium",
+      "summary": "Fictional: unbounded request size in admin endpoint."
+    }
+  ]
+}
