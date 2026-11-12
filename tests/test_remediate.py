@@ -6,6 +6,7 @@ from remediator.remediate import plan_remediation
 from remediator.runner import CommandResult
 
 DPKG_QUERY = ("dpkg-query", "-W", "-f=${Version}", "acme-cli")
+RPM_QUERY = ("rpm", "-q", "--qf", "%{VERSION}", "acme-cli")
 
 
 def test_plan_remediation_vulnerable_returns_upgrade(advisories, ubuntu_os_release):
@@ -47,3 +48,17 @@ def test_plan_remediation_debian_revision_returns_upgrade(advisories, ubuntu_os_
     assert plan.action == "upgrade"
     assert plan.command == ["apt-get", "install", "-y", "--only-upgrade", "acme-cli"]
     assert plan.installed_version == "2.58.0-1ubuntu1"
+
+
+def test_plan_remediation_dnf_vulnerable_returns_upgrade(advisories, rocky_os_release):
+    runner = FakeRunner({RPM_QUERY: CommandResult(0, "2.58.0", "")})
+    plan = plan_remediation("acme-cli", advisories, runner, rocky_os_release)
+    assert plan.action == "upgrade"
+    assert plan.command == ["dnf", "upgrade", "-y", "acme-cli"]
+
+
+def test_plan_remediation_dnf_non_zero_exit_is_not_installed(advisories, rocky_os_release):
+    runner = FakeRunner({RPM_QUERY: CommandResult(1, "", "not installed")})
+    plan = plan_remediation("acme-cli", advisories, runner, rocky_os_release)
+    assert plan.action == "not_installed"
+    assert plan.installed_version is None

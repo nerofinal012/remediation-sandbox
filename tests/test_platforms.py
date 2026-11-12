@@ -27,9 +27,46 @@ def test_detect_package_manager_unknown_raises(alpine_os_release):
         detect_package_manager(alpine_os_release)
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ID=rhel\n",
+        "ID=fedora\n",
+        "ID=centos\n",
+        "ID=amzn\n",
+        'ID=rocky\nID_LIKE="rhel centos fedora"\n',
+    ],
+)
+def test_detect_package_manager_rhel_family_is_dnf(text):
+    assert detect_package_manager(text) == "dnf"
+
+
+def test_detect_package_manager_dual_match_prefers_apt():
+    assert detect_package_manager('ID=hybrid\nID_LIKE="debian rhel"\n') == "apt"
+
+
+def test_detect_package_manager_does_not_match_substrings():
+    with pytest.raises(UnsupportedPlatformError):
+        detect_package_manager("ID=notrhel\n")
+
+
+def test_detect_package_manager_unsupported_message_lists_all_managers(alpine_os_release):
+    with pytest.raises(UnsupportedPlatformError) as exc_info:
+        detect_package_manager(alpine_os_release)
+    message = str(exc_info.value)
+    assert "apt" in message
+    assert "dnf" in message
+
+
 def test_build_installed_version_command_apt():
     assert build_installed_version_command("apt", "acme-cli") == [
         "dpkg-query", "-W", "-f=${Version}", "acme-cli",
+    ]
+
+
+def test_build_installed_version_command_dnf():
+    assert build_installed_version_command("dnf", "acme-cli") == [
+        "rpm", "-q", "--qf", "%{VERSION}", "acme-cli",
     ]
 
 
@@ -37,6 +74,12 @@ def test_build_upgrade_command_apt_is_argument_list():
     assert build_upgrade_command("apt", "acme-cli") == [
         "apt-get", "install", "-y", "--only-upgrade", "acme-cli",
     ]
+
+
+def test_build_upgrade_command_dnf_is_argument_list():
+    command = build_upgrade_command("dnf", "acme-cli")
+    assert isinstance(command, list)
+    assert command == ["dnf", "upgrade", "-y", "acme-cli"]
 
 
 def test_build_upgrade_command_unknown_manager_raises():
