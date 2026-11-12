@@ -34,3 +34,22 @@ def test_cli_unknown_package_exits_2(monkeypatch, tmp_path, capsys):
     _use_ubuntu(monkeypatch, tmp_path)
     assert cli.main(["--package", "nope"], runner=FakeRunner()) == 2
     assert "no advisory" in capsys.readouterr().err
+
+
+def test_cli_debian_revision_reports_vulnerable(monkeypatch, tmp_path, capsys):
+    _use_ubuntu(monkeypatch, tmp_path)
+    runner = FakeRunner({DPKG_QUERY: CommandResult(0, "2.58.0-1ubuntu1", "")})
+    assert cli.main(["--package", "acme-cli"], runner=runner) == 0
+    out = capsys.readouterr().out
+    assert (
+        "acme-cli 2.58.0-1ubuntu1: VULNERABLE (FAKE-2026-0101, needs >= 2.61.0) -> "
+        "apt-get install -y --only-upgrade acme-cli"
+    ) in out
+    assert list(APT_UPGRADE) not in runner.calls
+
+
+def test_cli_malformed_installed_version_exits_2_without_traceback(monkeypatch, tmp_path, capsys):
+    _use_ubuntu(monkeypatch, tmp_path)
+    runner = FakeRunner({DPKG_QUERY: CommandResult(0, "not-a-version", "")})
+    assert cli.main(["--package", "acme-cli"], runner=runner) == 2
+    assert capsys.readouterr().err.startswith("error:")

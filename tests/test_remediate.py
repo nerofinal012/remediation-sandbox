@@ -39,3 +39,11 @@ def test_plan_remediation_never_runs_upgrade_itself(advisories, ubuntu_os_releas
     runner = FakeRunner({DPKG_QUERY: CommandResult(0, "2.58.0", "")})
     plan_remediation("acme-cli", advisories, runner, ubuntu_os_release)
     assert runner.calls == [list(DPKG_QUERY)]
+
+
+def test_plan_remediation_debian_revision_returns_upgrade(advisories, ubuntu_os_release):
+    runner = FakeRunner({DPKG_QUERY: CommandResult(0, "2.58.0-1ubuntu1", "")})
+    plan = plan_remediation("acme-cli", advisories, runner, ubuntu_os_release)
+    assert plan.action == "upgrade"
+    assert plan.command == ["apt-get", "install", "-y", "--only-upgrade", "acme-cli"]
+    assert plan.installed_version == "2.58.0-1ubuntu1"
