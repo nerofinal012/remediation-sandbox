@@ -21,6 +21,13 @@ NAME="Alpine Linux"
 ID=alpine
 """
 
+ROCKY_OS_RELEASE = """\
+NAME="Rocky Linux"
+VERSION_ID="9.3"
+ID="rocky"
+ID_LIKE="rhel centos fedora"
+"""
+
 
 class FakeRunner:
     """Returns canned results keyed by the exact argument list, and records every call."""
@@ -47,3 +54,8 @@ def ubuntu_os_release():
 @pytest.fixture
 def alpine_os_release():
     return ALPINE_OS_RELEASE
+
+
+@pytest.fixture
+def rocky_os_release():
+    return ROCKY_OS_RELEASE

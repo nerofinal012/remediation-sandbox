@@ -2,9 +2,10 @@
 
 from remediator.errors import UnsupportedPlatformError
 
-SUPPORTED_PACKAGE_MANAGERS = ("apt",)
+SUPPORTED_PACKAGE_MANAGERS = ("apt", "dnf")
 
 _APT_DISTRO_IDS = {"debian", "ubuntu"}
+_DNF_DISTRO_IDS = {"rhel", "fedora", "centos", "amzn"}
 
 
 def parse_os_release(text: str) -> dict[str, str]:
@@ -25,6 +26,8 @@ def detect_package_manager(os_release_text: str) -> str:
     ids = {fields.get("ID", "").lower(), *fields.get("ID_LIKE", "").lower().split()}
     if ids & _APT_DISTRO_IDS:
         return "apt"
+    if ids & _DNF_DISTRO_IDS:
+        return "dnf"
     raise UnsupportedPlatformError(
         f"unsupported platform ID={fields.get('ID', '?')!r}; "
         f"supported package managers: {', '.join(SUPPORTED_PACKAGE_MANAGERS)}"
@@ -35,6 +38,8 @@ def build_installed_version_command(package_manager: str, package: str) -> list[
     """Return the command that prints the installed version of a package."""
     if package_manager == "apt":
         return ["dpkg-query", "-W", "-f=${Version}", package]
+    if package_manager == "dnf":
+        return ["rpm", "-q", "--qf", "%{VERSION}", package]
     raise UnsupportedPlatformError(f"unsupported package manager: {package_manager!r}")
 
 
@@ -42,4 +47,6 @@ def build_upgrade_command(package_manager: str, package: str) -> list[str]:
     """Return the command that upgrades a package to the latest available version."""
     if package_manager == "apt":
         return ["apt-get", "install", "-y", "--only-upgrade", package]
+    if package_manager == "dnf":
+        return ["dnf", "upgrade", "-y", package]
     raise UnsupportedPlatformError(f"unsupported package manager: {package_manager!r}")
